@@ -17,6 +17,10 @@ class User extends Equatable {
   final bool isSuperUser;
   final DateTime lastLogin;
   final String token;
+  final String photo;
+  final String github;
+  final String twitter;
+  final String numberPhone;
 
   const User({
     @required this.id,
@@ -32,6 +36,10 @@ class User extends Equatable {
     this.bio,
     this.lastLogin,
     this.token,
+    this.photo,
+    this.github,
+    this.twitter,
+    this.numberPhone,
   })  : assert(id != null),
         assert(username != null),
         assert(email != null),
@@ -43,6 +51,45 @@ class User extends Equatable {
   String get fullName => firstName + ' ' + (lastName ?? '');
   String get stringGender => getGender(gender);
   String get stringStage => getStage(stage);
+
+  User copyWith({
+    int id,
+    String username,
+    String email,
+    String firstName,
+    bool isActive,
+    bool isStaff,
+    bool isSuperUser,
+    String lastName,
+    int gender,
+    int stage,
+    String bio,
+    DateTime lastLogin,
+    String token,
+    String photo,
+    String github,
+    String twitter,
+    String numberPhone,
+  }) =>
+      User(
+        id: id ?? this.id,
+        username: username ?? this.username,
+        email: email ?? this.email,
+        firstName: firstName ?? this.firstName,
+        lastName: lastName ?? this.lastName,
+        isActive: isActive ?? this.isActive,
+        isStaff: isStaff ?? this.isStaff,
+        isSuperUser: isSuperUser ?? this.isSuperUser,
+        bio: bio ?? this.bio,
+        gender: gender ?? this.gender,
+        stage: stage ?? this.stage,
+        lastLogin: lastLogin ?? this.lastLogin,
+        token: token ?? this.token,
+        photo: photo ?? this.photo,
+        github: github ?? this.github,
+        numberPhone: numberPhone ?? this.numberPhone,
+        twitter: twitter ?? this.twitter,
+      );
 
   @override
   List<Object> get props => [
@@ -59,5 +106,9 @@ class User extends Equatable {
         isSuperUser,
         lastLogin,
         token,
+        photo,
+        github,
+        twitter,
+        numberPhone,
       ];
 }

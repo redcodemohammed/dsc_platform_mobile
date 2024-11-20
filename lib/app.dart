@@ -3,9 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/constant.dart';
+import 'core/db/entities.dart';
 import 'core/utils/app_localizations.dart';
 import 'core/utils/dsc_route.dart' as route;
 import 'core/utils/strings.dart';
+import 'features/chat/presentation/blocs/chat_session/chat_session_bloc.dart';
+import 'features/chat/presentation/pages/list_chat_session_page.dart';
+import 'features/media/presentation/blocs/image/image_bloc.dart';
+import 'features/post/presentation/blocs/post/post_bloc.dart';
+import 'features/post/presentation/pages/post_page.dart';
 import 'features/settings/presentation/bloc/settings_bloc.dart';
 import 'features/user/presentation/blocs/authentication/authentication_bloc.dart';
 import 'features/user/presentation/blocs/login/login_bloc.dart';
@@ -42,6 +48,21 @@ class DSCApp extends StatelessWidget {
           cardColor: cardColor,
           fontFamily: state.settings.fontFamily,
           visualDensity: VisualDensity.adaptivePlatformDensity,
+          textSelectionTheme: TextSelectionThemeData(
+            cursorColor: primaryColor,
+            selectionColor: statusBarColor.withOpacity(0.2),
+            selectionHandleColor: statusBarColor,
+          ),
+          popupMenuTheme: PopupMenuThemeData(
+            elevation: 15,
+            color: primaryColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            textStyle: TextStyle(
+              color: cardColor,
+            ),
+          ),
           primaryTextTheme: TextTheme(
             subtitle1: TextStyle(
               color: Colors.white70,
@@ -63,7 +84,7 @@ class DSCApp extends StatelessWidget {
             ),
           ),
           iconTheme: IconThemeData(
-            color: Colors.white,
+            color: primaryColor,
           ),
         ),
         home: BlocBuilder<AuthenticationBloc, AuthenticationState>(
@@ -78,15 +99,94 @@ class DSCApp extends StatelessWidget {
               );
             }
             if (state is AuthenticateUser) {
-              return BlocProvider(
-                create: (_) => sl<UserBloc>()..add(FetchMyAccount()),
-                child: AccountPage(),
+              return MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => sl<UserBloc>()..add(FetchMyAccount()),
+                  ),
+                  BlocProvider<GeneralPostBloc>(
+                    create: (context) =>
+                        sl<GeneralPostBloc>()..add(FetchPosts()),
+                  ),
+                  BlocProvider<ChatSessionBloc>(
+                    create: (context) =>
+                        sl<ChatSessionBloc>()..add(FetchChatSession()),
+                  ),
+                  BlocProvider<UserPostBloc>(
+                    create: (context) =>
+                        sl<UserPostBloc>()..add(FetchUserPosts(state.user.id)),
+                  ),
+                  BlocProvider<ImageBloc>(
+                    create: (context) =>
+                        sl<ImageBloc>()..add(FetchImages(state.user.id)),
+                  ),
+                ],
+                child: HomeScreen(
+                  user: state.user,
+                ),
               );
             }
 
             return SplashScreen();
           },
         ),
+      ),
+    );
+  }
+}
+
+class HomeScreen extends StatefulWidget {
+  final User user;
+
+  const HomeScreen({
+    Key key,
+    @required this.user,
+  })  : assert(user != null),
+        super(key: key);
+
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int currentPage;
+  List<Widget> screens;
+
+  User get user => widget.user;
+
+  @override
+  void initState() {
+    super.initState();
+    currentPage = 0;
+    screens = [
+      PostPage(),
+      ListChatSessionPage(),
+      AccountPage(),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Strings.context = context;
+    return Scaffold(
+      body: screens[currentPage],
+      bottomNavigationBar: BottomNavigationBar(
+        items: [
+          BottomNavigationBarItem(
+            label: Strings.posts,
+            icon: Icon(Icons.description),
+          ),
+          BottomNavigationBarItem(
+            label: 'Chats',
+            icon: Icon(Icons.chat),
+          ),
+          BottomNavigationBarItem(
+            label: Strings.myAccount,
+            icon: Icon(Icons.person),
+          ),
+        ],
+        currentIndex: currentPage,
+        onTap: (page) => setState(() => currentPage = page),
       ),
     );
   }

@@ -20,7 +20,6 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _formKey = GlobalKey<FormState>();
-
   TextEditingController email;
   TextEditingController password;
 
@@ -39,6 +38,16 @@ class _LoginPageState extends State<LoginPage> {
     passwordNode = new FocusNode();
 
     loginBloc = BlocProvider.of<LoginBloc>(context);
+  }
+
+  @override
+  void dispose() {
+    email.dispose();
+    password.dispose();
+    emailNode.dispose();
+    passwordNode.dispose();
+    loginBloc.close();
+    super.dispose();
   }
 
   @override

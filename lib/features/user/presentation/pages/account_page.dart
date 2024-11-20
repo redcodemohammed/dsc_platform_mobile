@@ -1,14 +1,16 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 
-import '../../../../core/utils/dsc_route.dart' as route;
 import '../../../../core/constant.dart';
+import '../../../../core/db/entities.dart';
+import '../../../../core/utils/dsc_route.dart' as route;
 import '../../../../core/utils/strings.dart';
-import '../../../../core/utils/tools.dart';
+import '../../../media/presentation/widgets/images_list.dart';
 import '../blocs/authentication/authentication_bloc.dart';
 import '../blocs/user/user_bloc.dart';
-import '../widgets/post_card.dart';
+import '../widgets/posts_list.dart';
 import '../widgets/social_button.dart';
 
 class AccountPage extends StatefulWidget {
@@ -22,43 +24,82 @@ class _AccountPageState extends State<AccountPage> {
     Strings.context = context;
     setStatusBarColor(StatusBarState.Opacity);
     return Scaffold(
-      appBar: buildAppBar(),
-      body: ListView.separated(
-        physics: BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(8.0),
-        itemCount: 10,
-        itemBuilder: (context, index) => PostCard(),
-        separatorBuilder: (_, i) => SizedBox(
-          height: 5,
+      body: DefaultTabController(
+        length: 2,
+        child: NestedScrollView(
+          headerSliverBuilder: (_, b) => [
+            SliverPersistentHeader(
+              floating: true,
+              pinned: true,
+              delegate: AccountAppBarDelegate(),
+            ),
+          ],
+          body: Column(
+            children: [
+              TabBar(
+                indicatorColor: Theme.of(context).accentColor,
+                indicatorSize: TabBarIndicatorSize.label,
+                labelColor: Theme.of(context).accentColor,
+                tabs: [
+                  Tab(
+                    text: 'Posts',
+                    icon: Icon(Icons.description),
+                  ),
+                  Tab(
+                    text: 'Images',
+                    icon: Icon(Icons.image),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    PostsList(),
+                    ImagesList(),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
 
-  Widget buildAppBar() {
-    return PreferredSize(
-      preferredSize: Size.fromHeight(300),
-      child: Container(
-        height: 300,
-        decoration: BoxDecoration(
-          color: Theme.of(context).accentColor,
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).accentColor,
-              blurRadius: 5,
-            )
-          ],
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(25),
-          ),
+class AccountAppBarDelegate extends SliverPersistentHeaderDelegate {
+  bool _currentLogin(BuildContext context, User user) =>
+      user.id == BlocProvider.of<AuthenticationBloc>(context).user.id;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    double rest = 1 - (shrinkOffset / maxExtent);
+    final height = 100 - ((shrinkOffset / maxExtent) * 10);
+    final width = 75 - ((shrinkOffset / maxExtent) * 10);
+
+    return Container(
+      height: shrinkOffset == 0 ? maxExtent : null,
+      decoration: BoxDecoration(
+        color: Theme.of(context).accentColor,
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).accentColor,
+            blurRadius: 5,
+          )
+        ],
+        borderRadius: BorderRadius.vertical(
+          bottom: Radius.circular(25),
         ),
-        child: BlocBuilder<UserBloc, UserState>(
-          builder: (context, state) {
-            if (state is SuccessFetchAccount)
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
+      ),
+      child: BlocBuilder<UserBloc, UserState>(
+        builder: (context, state) {
+          if (state is SuccessFetchAccount)
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                if (rest > 0.7)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -66,64 +107,92 @@ class _AccountPageState extends State<AccountPage> {
                         color: Theme.of(context).accentColor,
                         child: IconButton(
                           icon: Icon(
-                            Icons.logout,
+                            _currentLogin(context, state.user)
+                                ? Navigator.canPop(context)
+                                    ? Icons.arrow_back_ios
+                                    : Icons.logout
+                                : Icons.arrow_back_ios,
+                            color: Colors.white,
                           ),
                           tooltip: Strings.logout,
                           onPressed: () =>
-                              BlocProvider.of<AuthenticationBloc>(context)
-                                  .add(NowLogout()),
+                              !_currentLogin(context, state.user) ||
+                                      Navigator.canPop(context)
+                                  ? Navigator.pop(context)
+                                  : BlocProvider.of<AuthenticationBloc>(context)
+                                      .add(NowLogout()),
                         ),
                       ),
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: OutlineButton(
-                          onPressed: () => Navigator.pushNamed(
-                            context,
-                            route.user_form,
-                            arguments: {
-                              'context': context,
-                              'user': state.user,
-                            },
-                          ),
-                          child: Text(
-                            Strings.edit,
-                            style: Theme.of(context).primaryTextTheme.subtitle2,
-                          ),
-                          borderSide: BorderSide(color: Colors.white70),
-                          splashColor: Colors.white54,
-                          highlightedBorderColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(5.0),
+                      if (_currentLogin(context, state.user))
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: OutlineButton(
+                            onPressed: () => Navigator.pushNamed(
+                              context,
+                              route.user_form,
+                              arguments: {
+                                'context': context,
+                                'user': state.user,
+                              },
+                            ),
+                            child: Text(
+                              Strings.edit,
+                              style:
+                                  Theme.of(context).primaryTextTheme.subtitle2,
+                            ),
+                            borderSide: BorderSide(color: Colors.white70),
+                            splashColor: Colors.white54,
+                            highlightedBorderColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
-                  Row(
+                SafeArea(
+                  top: rest < 0.7,
+                  bottom: false,
+                  right: false,
+                  left: false,
+                  maintainBottomViewPadding: true,
+                  child: Row(
                     children: [
                       Expanded(
                         flex: 2,
-                        child: Stack(
-                          children: [
-                            Container(
-                              height: 105,
-                              width: 75,
-                            ),
-                            SvgPicture.asset(
-                              'assets/images/profile_pic.svg',
-                              height: 75,
-                              width: 75,
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              width: 75,
-                              child: Chip(
-                                label: Text(
-                                  getStage(state.user.stage),
+                        child: Container(
+                          alignment: Alignment.center,
+                          child: Stack(
+                            children: [
+                              Container(
+                                height: height,
+                                width: width,
+                              ),
+                              if (state.user.photo == null)
+                                SvgPicture.asset(
+                                  'assets/images/profile_pic.svg',
+                                  height: width,
+                                  width: width,
+                                ),
+                              if (state.user.photo != null)
+                                CircleAvatar(
+                                  radius: width - 33,
+                                  backgroundImage: CachedNetworkImageProvider(
+                                    state.user.photo,
+                                  ),
+                                ),
+                              Positioned(
+                                bottom: 0,
+                                width: width,
+                                child: Chip(
+                                  label: Text(
+                                    state.user.stringStage,
+                                    style: Theme.of(context).textTheme.overline,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       Expanded(
@@ -139,24 +208,41 @@ class _AccountPageState extends State<AccountPage> {
                                   .copyWith(color: Colors.white),
                             ),
                             Text(
-                              '${state.user.username} (${getGender(state.user.gender)})',
+                              '${state.user.username} (${state.user.stringGender})',
                               style:
                                   Theme.of(context).primaryTextTheme.subtitle1,
                             ),
-                            // if (false)
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SocialIconButton(),
-                                SocialIconButton(),
-                                SocialIconButton(),
-                              ],
-                            ),
+                            if (rest > 0.6)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (state.user.github != null &&
+                                      state.user.github.isNotEmpty)
+                                    SocialIconButton(
+                                      type: SocialIconButtonType.GitHub,
+                                      data: state.user.github,
+                                    ),
+                                  if (state.user.twitter != null &&
+                                      state.user.twitter.isNotEmpty)
+                                    SocialIconButton(
+                                      type: SocialIconButtonType.Twitter,
+                                      data: state.user.twitter,
+                                    ),
+                                  if (state.user.numberPhone != null &&
+                                      state.user.numberPhone.isNotEmpty)
+                                    SocialIconButton(
+                                      type: SocialIconButtonType.NumberPhone,
+                                      data: state.user.numberPhone,
+                                    ),
+                                ],
+                              ),
                           ],
                         ),
                       ),
                     ],
                   ),
+                ),
+                if (rest > 0.7)
                   Row(
                     children: [
                       Padding(
@@ -168,31 +254,42 @@ class _AccountPageState extends State<AccountPage> {
                       ),
                     ],
                   ),
-                ],
-              );
-
-            if (state is FieldFetchAccount)
-              return Column(
-                children: [
-                  Icon(
-                    Icons.error,
-                    color: Theme.of(context).errorColor,
-                  ),
-                  Text(state.failure.details),
-                ],
-              );
-
-            return Container(
-              width: 50,
-              height: 50,
-              alignment: Alignment.center,
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
+              ],
             );
-          },
-        ),
+
+          if (state is FieldFetchAccount)
+            return Column(
+              children: [
+                Icon(
+                  Icons.error,
+                  color: Theme.of(context).errorColor,
+                ),
+                Text(state.failure.details),
+              ],
+            );
+
+          return Container(
+            width: 50,
+            height: (maxExtent - shrinkOffset) > height
+                ? (maxExtent - shrinkOffset)
+                : height,
+            alignment: Alignment.center,
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          );
+        },
       ),
     );
   }
+
+  @override
+  double get maxExtent => 300;
+
+  @override
+  double get minExtent => 125;
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
+      true;
 }

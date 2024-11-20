@@ -7,10 +7,13 @@ const POST_KEY = 'POSTS';
 const COMMENT_KEY = 'COMMENTS';
 const TOKEN_KEY = 'TOKEN';
 const SETTINGS_KEY = 'SETTINGS';
+const DSC_PLATFORM = 'DSC Platform';
 
 /// Const Server Data
-const server_ip = '172.105.245.119';
-const server_port = 82;
+const server_ip = '192.46.235.59';
+const server_port = 443;
+const domain = 'iqds.club';
+const web_url = 'https://$domain/';
 
 /// Const colors
 const Color primaryColor = const Color(0xff3F3D56);
